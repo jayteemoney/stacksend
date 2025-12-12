@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.cache/
+.clarinet/
+
+# Test files (Deno-based, use Clarinet's own checking)
+tests/
+
+# Frontend build
+frontend/dist/
+frontend/build/
+
+# Settings
+settings/
+
+# Clarity contracts (not TypeScript/JavaScript)
+*.clar
+
+# Config files
+*.config.js
+*.config.ts
