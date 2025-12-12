@@ -152,6 +152,42 @@
   )
 )
 
+;; Release funds to recipient after target is reached
+;; @param remittance-id: The ID of the remittance to release funds from
+;; @returns: Success boolean or error code
+(define-public (release-funds (remittance-id uint))
+  (let
+    (
+      (remittance (unwrap! (map-get? remittances { remittance-id: remittance-id }) err-not-found))
+      (current-time (unwrap-panic (stacks-block-time)))
+      (total-raised (get total-raised remittance))
+      (platform-fee (/ (* total-raised platform-fee-bps) basis-points))
+      (net-amount (- total-raised platform-fee))
+    )
+
+    ;; Validations
+    (asserts! (is-eq tx-sender (get recipient remittance)) err-unauthorized)
+    (asserts! (is-eq (get status remittance) "funded") err-invalid-status)
+
+    ;; Transfer net amount to recipient
+    (try! (as-contract (stx-transfer? net-amount tx-sender (get recipient remittance))))
+
+    ;; Transfer platform fee to contract owner
+    (try! (as-contract (stx-transfer? platform-fee tx-sender contract-owner)))
+
+    ;; Update remittance status and timestamp
+    (map-set remittances
+      { remittance-id: remittance-id }
+      (merge remittance {
+        status: "completed",
+        released-at: (some current-time)
+      })
+    )
+
+    (ok true)
+  )
+)
+
 ;; Read-only functions
 
 ;; Get contract owner
