@@ -13,6 +13,8 @@
 (define-constant err-already-released (err u106))
 (define-constant err-deadline-passed (err u107))
 (define-constant err-invalid-status (err u108))
+(define-constant err-contract-paused (err u109))
+(define-constant err-invalid-recipient (err u110))
 
 ;; Platform fee: 0.5% (50 basis points out of 10000)
 (define-constant platform-fee-bps u50)
@@ -49,17 +51,73 @@
   }
 )
 
-;; Placeholder for future implementation
-;; This contract will be developed across Days 3-8 as per PROJECT_PLAN.md
+;; Public Functions
+
+;; Create a new remittance request
+;; @param recipient: The principal who will receive the funds
+;; @param target-amount: The total amount needed (in micro-STX)
+;; @param deadline: Block time when the remittance expires
+;; @param description: Description of the remittance purpose
+;; @param currency-pair: Currency pair for exchange rate (e.g., "USD-KES")
+;; @returns: The remittance ID on success, error code on failure
+(define-public (create-remittance
+    (recipient principal)
+    (target-amount uint)
+    (deadline uint)
+    (description (string-ascii 500))
+    (currency-pair (string-ascii 10)))
+  (let
+    (
+      (remittance-id (var-get remittance-nonce))
+      (current-time (unwrap-panic (stacks-block-time)))
+    )
+
+    ;; Validations
+    (asserts! (not (var-get contract-paused)) err-contract-paused)
+    (asserts! (not (is-eq recipient tx-sender)) err-invalid-recipient)
+    (asserts! (> target-amount u0) err-invalid-amount)
+    (asserts! (> deadline current-time) err-invalid-deadline)
+
+    ;; Store remittance data
+    (map-set remittances
+      { remittance-id: remittance-id }
+      {
+        creator: tx-sender,
+        recipient: recipient,
+        target-amount: target-amount,
+        total-raised: u0,
+        deadline: deadline,
+        description: description,
+        status: "active",
+        created-at: current-time,
+        released-at: none,
+        currency-pair: currency-pair
+      }
+    )
+
+    ;; Increment nonce for next remittance
+    (var-set remittance-nonce (+ remittance-id u1))
+
+    ;; Return the remittance ID
+    (ok remittance-id)
+  )
+)
 
 ;; Read-only functions
+
+;; Get contract owner
 (define-read-only (get-contract-owner)
   contract-owner
 )
 
+;; Check if contract is paused
 (define-read-only (is-paused)
   (var-get contract-paused)
 )
 
-;; This is a placeholder contract
-;; Full implementation coming in subsequent issues
+;; Get remittance details by ID
+;; @param remittance-id: The ID of the remittance
+;; @returns: Remittance data or error if not found
+(define-read-only (get-remittance (remittance-id uint))
+  (ok (unwrap! (map-get? remittances { remittance-id: remittance-id }) err-not-found))
+)

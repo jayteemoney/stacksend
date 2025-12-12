@@ -61,9 +61,6 @@
     ],
     "*.{json,md}": [
       "prettier --write"
-    ],
-    "*.clar": [
-      "prettier --write"
     ]
   },
   "engines": {
