@@ -1,0 +1,26 @@
+[network]
+name = "mainnet"
+stacks_node_rpc_address = "https://api.hiro.so"
+deployment_fee_rate = 10
+
+[accounts.deployer]
+mnemonic = "<REPLACE_WITH_YOUR_MAINNET_MNEMONIC>"
+balance = 1_000_000
+
+[[deployment]]
+stacks_node = "https://api.hiro.so"
+[[deployment.plan.batches]]
+id = 0
+[[deployment.plan.batches.transactions]]
+contract-publish.contract-name = "stacksend-oracle"
+contract-publish.expected-sender = "<DEPLOYER_ADDRESS>"
+contract-publish.cost = 5840
+contract-publish.path = "contracts/stacksend-oracle.clar"
+contract-publish.anchor-block-only = true
+
+[[deployment.plan.batches.transactions]]
+contract-publish.contract-name = "stacksend-escrow"
+contract-publish.expected-sender = "<DEPLOYER_ADDRESS>"
+contract-publish.cost = 14280
+contract-publish.path = "contracts/stacksend-escrow.clar"
+contract-publish.anchor-block-only = true

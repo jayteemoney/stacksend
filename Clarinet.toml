@@ -5,6 +5,7 @@ authors = ["jayteemoney"]
 telemetry_enabled = false
 requirements = []
 boot_contracts = []
+cache_dir = ".cache"
 
 [contracts.stacksend-escrow]
 path = "contracts/stacksend-escrow.clar"
