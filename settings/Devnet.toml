@@ -1,0 +1,38 @@
+[network]
+name = "devnet"
+stacks_node_rpc_address = "http://localhost:20443"
+deployment_fee_rate = 10
+
+[accounts.deployer]
+mnemonic = "fetch outside black test wash cover just actual execute nice door want airport betray quantum stamp fish act pen trust portion fatigue scissors vague"
+balance = 100_000_000_000_000
+
+[accounts.wallet_1]
+mnemonic = "spoil sock coyote include verify comic jacket gain beauty tank flush victory illness edge reveal shallow plug hobby usual juice harsh pact wreck eight"
+balance = 100_000_000_000_000
+
+[accounts.wallet_2]
+mnemonic = "hold flood balance flock twenty flat wall oil cook street fan cruise arrest relief party practice tree portion champion drastic debris dress beach perfect"
+balance = 100_000_000_000_000
+
+[accounts.wallet_3]
+mnemonic = "board list obtain sugar hour worth raven scout denial thunder horse logic fury scorpion fold genuine phrase wealth news aim below celery when cabin"
+balance = 100_000_000_000_000
+
+[[deployment]]
+stacks_node = "http://localhost:20443"
+[[deployment.plan.batches]]
+id = 0
+[[deployment.plan.batches.transactions]]
+contract-publish.contract-name = "stacksend-oracle"
+contract-publish.expected-sender = "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM"
+contract-publish.cost = 5840
+contract-publish.path = "contracts/stacksend-oracle.clar"
+contract-publish.anchor-block-only = true
+
+[[deployment.plan.batches.transactions]]
+contract-publish.contract-name = "stacksend-escrow"
+contract-publish.expected-sender = "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM"
+contract-publish.cost = 14280
+contract-publish.path = "contracts/stacksend-escrow.clar"
+contract-publish.anchor-block-only = true
