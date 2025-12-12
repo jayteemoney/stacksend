@@ -16,6 +16,7 @@
 (define-constant err-contract-paused (err u109))
 (define-constant err-invalid-recipient (err u110))
 (define-constant err-invalid-description (err u111))
+(define-constant err-invalid-currency-pair (err u112))
 
 ;; Platform fee: 0.5% (50 basis points out of 10000)
 ;; Max fee: 5% (500 basis points)
@@ -95,6 +96,7 @@
     (try! (validate-amount target-amount u1 max-amount))
     (try! (validate-deadline deadline current-time))
     (try! (validate-description description))
+    (try! (validate-currency-pair currency-pair))
 
     ;; Store remittance data
     (map-set remittances
@@ -359,6 +361,23 @@
     )
     (asserts! (> desc-length u0) err-invalid-description)
     (asserts! (<= desc-length u500) err-invalid-description)
+    (ok true)
+  )
+)
+
+;; Helper function to validate currency pair format
+;; @param currency-pair: The currency pair to validate (e.g., "USD-KES")
+;; @returns: (ok true) if valid, error otherwise
+(define-private (validate-currency-pair (currency-pair (string-ascii 10)))
+  (let
+    (
+      (pair-length (len currency-pair))
+    )
+    ;; Check not empty
+    (asserts! (> pair-length u0) err-invalid-currency-pair)
+    ;; Check within reasonable length (3-10 chars for various formats)
+    (asserts! (>= pair-length u3) err-invalid-currency-pair)
+    (asserts! (<= pair-length u10) err-invalid-currency-pair)
     (ok true)
   )
 )
