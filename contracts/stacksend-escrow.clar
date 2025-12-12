@@ -103,6 +103,55 @@
   )
 )
 
+;; Contribute STX to a remittance
+;; @param remittance-id: The ID of the remittance to contribute to
+;; @param amount: Amount of STX to contribute (in micro-STX)
+;; @returns: Success boolean or error code
+(define-public (contribute (remittance-id uint) (amount uint))
+  (let
+    (
+      (remittance (unwrap! (map-get? remittances { remittance-id: remittance-id }) err-not-found))
+      (current-time (unwrap-panic (stacks-block-time)))
+      (existing-contribution (default-to
+        { amount: u0, contributed-at: u0 }
+        (map-get? contributions { remittance-id: remittance-id, contributor: tx-sender })
+      ))
+      (new-contribution-amount (+ (get amount existing-contribution) amount))
+      (new-total-raised (+ (get total-raised remittance) amount))
+      (target-reached (>= new-total-raised (get target-amount remittance)))
+    )
+
+    ;; Validations
+    (asserts! (not (var-get contract-paused)) err-contract-paused)
+    (asserts! (> amount u0) err-invalid-amount)
+    (asserts! (is-eq (get status remittance) "active") err-invalid-status)
+    (asserts! (> (get deadline remittance) current-time) err-deadline-passed)
+
+    ;; Transfer STX from contributor to contract
+    (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+
+    ;; Update or create contribution record
+    (map-set contributions
+      { remittance-id: remittance-id, contributor: tx-sender }
+      {
+        amount: new-contribution-amount,
+        contributed-at: current-time
+      }
+    )
+
+    ;; Update remittance with new total and status if target reached
+    (map-set remittances
+      { remittance-id: remittance-id }
+      (merge remittance {
+        total-raised: new-total-raised,
+        status: (if target-reached "funded" "active")
+      })
+    )
+
+    (ok true)
+  )
+)
+
 ;; Read-only functions
 
 ;; Get contract owner
@@ -120,4 +169,12 @@
 ;; @returns: Remittance data or error if not found
 (define-read-only (get-remittance (remittance-id uint))
   (ok (unwrap! (map-get? remittances { remittance-id: remittance-id }) err-not-found))
+)
+
+;; Get contribution details for a specific contributor
+;; @param remittance-id: The ID of the remittance
+;; @param contributor: The principal of the contributor
+;; @returns: Contribution data or error if not found
+(define-read-only (get-contribution (remittance-id uint) (contributor principal))
+  (ok (unwrap! (map-get? contributions { remittance-id: remittance-id, contributor: contributor }) err-not-found))
 )
