@@ -385,6 +385,19 @@
   )
 )
 
+;; Helper function to check if value is within limits
+;; @param value: The value to validate
+;; @param min-value: Minimum acceptable value
+;; @param max-value: Maximum acceptable value
+;; @returns: (ok true) if within limits, error otherwise
+(define-private (is-within-limits (value uint) (min-value uint) (max-value uint))
+  (begin
+    (asserts! (>= value min-value) err-invalid-amount)
+    (asserts! (<= value max-value) err-invalid-amount)
+    (ok true)
+  )
+)
+
 ;; Helper function to validate description strings
 ;; @param description: The description to validate
 ;; @returns: (ok true) if valid, error otherwise
