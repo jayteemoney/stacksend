@@ -351,6 +351,19 @@
   )
 )
 
+;; Helper function to validate string length
+;; @param length: The length to validate
+;; @param min-length: Minimum acceptable length
+;; @param max-length: Maximum acceptable length
+;; @returns: (ok true) if valid, error otherwise
+(define-private (is-valid-string-length (length uint) (min-length uint) (max-length uint))
+  (begin
+    (asserts! (>= length min-length) err-invalid-description)
+    (asserts! (<= length max-length) err-invalid-description)
+    (ok true)
+  )
+)
+
 ;; Helper function to validate description strings
 ;; @param description: The description to validate
 ;; @returns: (ok true) if valid, error otherwise
