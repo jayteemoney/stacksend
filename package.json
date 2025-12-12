@@ -1,0 +1,45 @@
+{
+  "name": "stacksend",
+  "version": "0.1.0",
+  "description": "A peer-to-peer remittance dApp on Stacks blockchain with group contribution support",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "clarinet test",
+    "check": "clarinet check",
+    "console": "clarinet console",
+    "deploy:testnet": "clarinet deployments apply -p deployments/testnet.yaml",
+    "deploy:mainnet": "clarinet deployments apply -p deployments/mainnet.yaml",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:preview": "cd frontend && npm run preview",
+    "dev": "concurrently \"npm run console\" \"npm run frontend:dev\"",
+    "build": "npm run frontend:build",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write \"**/*.{ts,tsx,clar,md,json}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,clar,md,json}\"",
+    "prepare": "husky install"
+  },
+  "keywords": [
+    "stacks",
+    "clarity",
+    "blockchain",
+    "remittance",
+    "dapp",
+    "defi"
+  ],
+  "author": "jayteemoney",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.55.0",
+    "husky": "^8.0.3",
+    "prettier": "^3.1.1",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

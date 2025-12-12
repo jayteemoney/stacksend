@@ -1,0 +1,30 @@
+[project]
+name = "stacksend"
+description = "A peer-to-peer remittance dApp on Stacks blockchain with group contribution support"
+authors = ["jayteemoney"]
+telemetry_enabled = false
+requirements = []
+boot_contracts = []
+
+[contracts.stacksend-escrow]
+path = "contracts/stacksend-escrow.clar"
+clarity_version = 4
+epoch = "3.3"
+
+[contracts.stacksend-oracle]
+path = "contracts/stacksend-oracle.clar"
+clarity_version = 4
+epoch = "3.3"
+
+[repl]
+costs_version = 3
+parser_version = 2
+
+[repl.analysis]
+passes = ["check_checker"]
+
+[repl.analysis.check_checker]
+strict = true
+trusted_sender = false
+trusted_caller = false
+callee_filter = false
