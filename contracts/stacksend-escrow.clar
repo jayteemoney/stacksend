@@ -364,6 +364,16 @@
   )
 )
 
+;; Helper function to check if amount is positive
+;; @param amount: The amount to validate
+;; @returns: (ok true) if positive (> 0), error otherwise
+(define-private (is-positive-amount (amount uint))
+  (begin
+    (asserts! (> amount u0) err-invalid-amount)
+    (ok true)
+  )
+)
+
 ;; Helper function to validate description strings
 ;; @param description: The description to validate
 ;; @returns: (ok true) if valid, error otherwise
