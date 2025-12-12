@@ -691,3 +691,320 @@ Clarinet.test({
     assertEquals(checkBlock.receipts[0].result.includes('"funded"'), true);
   },
 });
+
+// ============================================================================
+// ADMIN FUNCTIONS TESTS
+// ============================================================================
+
+Clarinet.test({
+  name: 'pause-contract: Successfully pauses contract (owner only)',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+
+    let block = chain.mineBlock([
+      Tx.contractCall('stacksend-escrow', 'pause-contract', [], deployer.address),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(ok true)');
+
+    // Check if paused
+    let checkBlock = chain.mineBlock([
+      Tx.contractCall('stacksend-escrow', 'is-paused', [], deployer.address),
+    ]);
+    assertEquals(checkBlock.receipts[0].result, 'true');
+  },
+});
+
+Clarinet.test({
+  name: 'pause-contract: Fails when called by non-owner',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const wallet = accounts.get('wallet_1')!;
+
+    let block = chain.mineBlock([
+      Tx.contractCall('stacksend-escrow', 'pause-contract', [], wallet.address),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(err u100)'); // err-owner-only
+  },
+});
+
+Clarinet.test({
+  name: 'pause-contract: Fails when already paused',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+
+    // First pause
+    chain.mineBlock([Tx.contractCall('stacksend-escrow', 'pause-contract', [], deployer.address)]);
+
+    // Try to pause again
+    let block = chain.mineBlock([
+      Tx.contractCall('stacksend-escrow', 'pause-contract', [], deployer.address),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(err u109)'); // err-contract-paused
+  },
+});
+
+Clarinet.test({
+  name: 'unpause-contract: Successfully unpauses contract',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+
+    // First pause
+    chain.mineBlock([Tx.contractCall('stacksend-escrow', 'pause-contract', [], deployer.address)]);
+
+    // Then unpause
+    let block = chain.mineBlock([
+      Tx.contractCall('stacksend-escrow', 'unpause-contract', [], deployer.address),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(ok true)');
+
+    // Check if unpaused
+    let checkBlock = chain.mineBlock([
+      Tx.contractCall('stacksend-escrow', 'is-paused', [], deployer.address),
+    ]);
+    assertEquals(checkBlock.receipts[0].result, 'false');
+  },
+});
+
+Clarinet.test({
+  name: 'unpause-contract: Fails when called by non-owner',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+    const wallet = accounts.get('wallet_1')!;
+
+    // Pause first
+    chain.mineBlock([Tx.contractCall('stacksend-escrow', 'pause-contract', [], deployer.address)]);
+
+    // Try to unpause with non-owner
+    let block = chain.mineBlock([
+      Tx.contractCall('stacksend-escrow', 'unpause-contract', [], wallet.address),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(err u100)'); // err-owner-only
+  },
+});
+
+Clarinet.test({
+  name: 'unpause-contract: Fails when contract is not paused',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+
+    let block = chain.mineBlock([
+      Tx.contractCall('stacksend-escrow', 'unpause-contract', [], deployer.address),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(err u108)'); // err-invalid-status
+  },
+});
+
+Clarinet.test({
+  name: 'update-platform-fee: Successfully updates fee within limits',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+
+    // Update to 1% (100 bps)
+    let block = chain.mineBlock([
+      Tx.contractCall(
+        'stacksend-escrow',
+        'update-platform-fee',
+        [types.uint(100)],
+        deployer.address
+      ),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(ok true)');
+
+    // Check new fee
+    let checkBlock = chain.mineBlock([
+      Tx.contractCall('stacksend-escrow', 'get-platform-fee', [], deployer.address),
+    ]);
+    assertEquals(checkBlock.receipts[0].result, 'u100');
+  },
+});
+
+Clarinet.test({
+  name: 'update-platform-fee: Fails when exceeding max fee (5%)',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+
+    // Try to set to 6% (600 bps) - should fail
+    let block = chain.mineBlock([
+      Tx.contractCall(
+        'stacksend-escrow',
+        'update-platform-fee',
+        [types.uint(600)],
+        deployer.address
+      ),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(err u103)'); // err-invalid-amount
+  },
+});
+
+Clarinet.test({
+  name: 'update-platform-fee: Fails when called by non-owner',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const wallet = accounts.get('wallet_1')!;
+
+    let block = chain.mineBlock([
+      Tx.contractCall('stacksend-escrow', 'update-platform-fee', [types.uint(100)], wallet.address),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(err u100)'); // err-owner-only
+  },
+});
+
+Clarinet.test({
+  name: 'update-platform-fee: Accepts max fee of 500 bps (5%)',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+
+    let block = chain.mineBlock([
+      Tx.contractCall(
+        'stacksend-escrow',
+        'update-platform-fee',
+        [types.uint(500)],
+        deployer.address
+      ),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(ok true)');
+
+    // Verify fee
+    let checkBlock = chain.mineBlock([
+      Tx.contractCall('stacksend-escrow', 'get-platform-fee', [], deployer.address),
+    ]);
+    assertEquals(checkBlock.receipts[0].result, 'u500');
+  },
+});
+
+Clarinet.test({
+  name: 'emergency-withdraw: Successfully withdraws funds (owner only)',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+    const recipient = accounts.get('wallet_1')!;
+
+    // First, send some STX to contract via a contribution
+    const creator = accounts.get('wallet_2')!;
+    const recipientWallet = accounts.get('wallet_3')!;
+    createRemittance(chain, creator, recipientWallet.address, 1000000, 1000);
+
+    chain.mineBlock([
+      Tx.contractCall(
+        'stacksend-escrow',
+        'contribute',
+        [types.uint(0), types.uint(100000)],
+        creator.address
+      ),
+    ]);
+
+    // Emergency withdraw
+    let block = chain.mineBlock([
+      Tx.contractCall(
+        'stacksend-escrow',
+        'emergency-withdraw',
+        [types.uint(50000), types.principal(recipient.address)],
+        deployer.address
+      ),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(ok true)');
+  },
+});
+
+Clarinet.test({
+  name: 'emergency-withdraw: Fails when called by non-owner',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const wallet = accounts.get('wallet_1')!;
+    const recipient = accounts.get('wallet_2')!;
+
+    let block = chain.mineBlock([
+      Tx.contractCall(
+        'stacksend-escrow',
+        'emergency-withdraw',
+        [types.uint(50000), types.principal(recipient.address)],
+        wallet.address
+      ),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(err u100)'); // err-owner-only
+  },
+});
+
+Clarinet.test({
+  name: 'emergency-withdraw: Fails with zero amount',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+    const recipient = accounts.get('wallet_1')!;
+
+    let block = chain.mineBlock([
+      Tx.contractCall(
+        'stacksend-escrow',
+        'emergency-withdraw',
+        [types.uint(0), types.principal(recipient.address)],
+        deployer.address
+      ),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(err u103)'); // err-invalid-amount
+  },
+});
+
+Clarinet.test({
+  name: 'get-platform-fee: Returns current platform fee',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+
+    let block = chain.mineBlock([
+      Tx.contractCall('stacksend-escrow', 'get-platform-fee', [], deployer.address),
+    ]);
+
+    assertEquals(block.receipts[0].result, 'u50'); // Default 0.5%
+  },
+});
+
+Clarinet.test({
+  name: 'Paused contract blocks create-remittance',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+    const creator = accounts.get('wallet_1')!;
+    const recipient = accounts.get('wallet_2')!;
+
+    // Pause contract
+    chain.mineBlock([Tx.contractCall('stacksend-escrow', 'pause-contract', [], deployer.address)]);
+
+    // Try to create remittance
+    let block = createRemittance(chain, creator, recipient.address, 1000000, 1000);
+
+    assertEquals(block.receipts[0].result, '(err u109)'); // err-contract-paused
+  },
+});
+
+Clarinet.test({
+  name: 'Paused contract blocks contribute',
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const deployer = accounts.get('deployer')!;
+    const creator = accounts.get('wallet_1')!;
+    const recipient = accounts.get('wallet_2')!;
+
+    // Create remittance while unpaused
+    createRemittance(chain, creator, recipient.address, 1000000, 1000);
+
+    // Pause contract
+    chain.mineBlock([Tx.contractCall('stacksend-escrow', 'pause-contract', [], deployer.address)]);
+
+    // Try to contribute
+    let block = chain.mineBlock([
+      Tx.contractCall(
+        'stacksend-escrow',
+        'contribute',
+        [types.uint(0), types.uint(100000)],
+        creator.address
+      ),
+    ]);
+
+    assertEquals(block.receipts[0].result, '(err u109)'); // err-contract-paused
+  },
+});

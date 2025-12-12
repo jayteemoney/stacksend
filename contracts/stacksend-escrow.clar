@@ -17,8 +17,10 @@
 (define-constant err-invalid-recipient (err u110))
 
 ;; Platform fee: 0.5% (50 basis points out of 10000)
-(define-constant platform-fee-bps u50)
+;; Max fee: 5% (500 basis points)
 (define-constant basis-points u10000)
+(define-constant max-platform-fee-bps u500)
+(define-data-var platform-fee-bps uint u50)
 
 ;; Data Variables
 (define-data-var remittance-nonce uint u0)
@@ -184,7 +186,7 @@
       (remittance (unwrap! (map-get? remittances { remittance-id: remittance-id }) err-not-found))
       (current-time (unwrap-panic (stacks-block-time)))
       (total-raised (get total-raised remittance))
-      (platform-fee (/ (* total-raised platform-fee-bps) basis-points))
+      (platform-fee (/ (* total-raised (var-get platform-fee-bps)) basis-points))
       (net-amount (- total-raised platform-fee))
     )
 
@@ -245,6 +247,56 @@
   )
 )
 
+;; Admin Functions
+
+;; Pause the contract (owner only)
+;; @returns: Success boolean or error code
+(define-public (pause-contract)
+  (begin
+    (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+    (asserts! (not (var-get contract-paused)) err-contract-paused)
+    (var-set contract-paused true)
+    (ok true)
+  )
+)
+
+;; Unpause the contract (owner only)
+;; @returns: Success boolean or error code
+(define-public (unpause-contract)
+  (begin
+    (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+    (asserts! (var-get contract-paused) err-invalid-status)
+    (var-set contract-paused false)
+    (ok true)
+  )
+)
+
+;; Update platform fee (owner only)
+;; @param new-fee-bps: New fee in basis points (max 500 = 5%)
+;; @returns: Success boolean or error code
+(define-public (update-platform-fee (new-fee-bps uint))
+  (begin
+    (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+    (asserts! (<= new-fee-bps max-platform-fee-bps) err-invalid-amount)
+    (var-set platform-fee-bps new-fee-bps)
+    (ok true)
+  )
+)
+
+;; Emergency withdraw for stuck funds (owner only)
+;; This should only be used for truly stuck funds, not active remittances
+;; @param amount: Amount to withdraw in micro-STX
+;; @param recipient: Where to send the funds
+;; @returns: Success boolean or error code
+(define-public (emergency-withdraw (amount uint) (recipient principal))
+  (begin
+    (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+    (asserts! (> amount u0) err-invalid-amount)
+    (try! (as-contract (stx-transfer? amount tx-sender recipient)))
+    (ok true)
+  )
+)
+
 ;; Private Functions
 
 ;; Helper function to refund a single contributor
@@ -297,4 +349,10 @@
 ;; @returns: Contribution data or error if not found
 (define-read-only (get-contribution (remittance-id uint) (contributor principal))
   (ok (unwrap! (map-get? contributions { remittance-id: remittance-id, contributor: contributor }) err-not-found))
+)
+
+;; Get current platform fee in basis points
+;; @returns: Current platform fee (e.g., 50 = 0.5%)
+(define-read-only (get-platform-fee)
+  (var-get platform-fee-bps)
 )
