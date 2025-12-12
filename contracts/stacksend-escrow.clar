@@ -374,6 +374,17 @@
   )
 )
 
+;; Helper function to check if timestamp is in the future
+;; @param timestamp: The timestamp to validate
+;; @param current-time: Current block time
+;; @returns: (ok true) if timestamp is in the future, error otherwise
+(define-private (is-future-timestamp (timestamp uint) (current-time uint))
+  (begin
+    (asserts! (> timestamp current-time) err-invalid-deadline)
+    (ok true)
+  )
+)
+
 ;; Helper function to validate description strings
 ;; @param description: The description to validate
 ;; @returns: (ok true) if valid, error otherwise
