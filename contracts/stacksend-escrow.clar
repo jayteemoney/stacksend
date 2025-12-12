@@ -82,7 +82,7 @@
 
     ;; Validations
     (asserts! (not (var-get contract-paused)) err-contract-paused)
-    (asserts! (not (is-eq recipient tx-sender)) err-invalid-recipient)
+    (try! (validate-principal recipient false))
     (asserts! (> target-amount u0) err-invalid-amount)
     (asserts! (> deadline current-time) err-invalid-deadline)
 
@@ -298,6 +298,18 @@
 )
 
 ;; Private Functions
+
+;; Helper function to validate principal addresses
+;; @param principal-to-check: The principal to validate
+;; @param allow-self: Whether tx-sender is allowed as the principal
+;; @returns: (ok true) if valid, error otherwise
+(define-private (validate-principal (principal-to-check principal) (allow-self bool))
+  (begin
+    ;; Check if principal is tx-sender when not allowed
+    (asserts! (or allow-self (not (is-eq principal-to-check tx-sender))) err-invalid-recipient)
+    (ok true)
+  )
+)
 
 ;; Helper function to refund a single contributor
 ;; @param contributor: The principal to refund
