@@ -15,6 +15,7 @@
 (define-constant err-invalid-status (err u108))
 (define-constant err-contract-paused (err u109))
 (define-constant err-invalid-recipient (err u110))
+(define-constant err-invalid-description (err u111))
 
 ;; Platform fee: 0.5% (50 basis points out of 10000)
 ;; Max fee: 5% (500 basis points)
@@ -93,6 +94,7 @@
     (try! (validate-principal recipient false))
     (try! (validate-amount target-amount u1 max-amount))
     (try! (validate-deadline deadline current-time))
+    (try! (validate-description description))
 
     ;; Store remittance data
     (map-set remittances
@@ -343,6 +345,20 @@
     )
     (asserts! (> deadline current-time) err-invalid-deadline)
     (asserts! (<= deadline max-deadline) err-invalid-deadline)
+    (ok true)
+  )
+)
+
+;; Helper function to validate description strings
+;; @param description: The description to validate
+;; @returns: (ok true) if valid, error otherwise
+(define-private (validate-description (description (string-ascii 500)))
+  (let
+    (
+      (desc-length (len description))
+    )
+    (asserts! (> desc-length u0) err-invalid-description)
+    (asserts! (<= desc-length u500) err-invalid-description)
     (ok true)
   )
 )
