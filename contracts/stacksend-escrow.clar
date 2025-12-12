@@ -22,6 +22,10 @@
 (define-constant max-platform-fee-bps u500)
 (define-data-var platform-fee-bps uint u50)
 
+;; Amount limits
+;; Max amount: 1 million STX (1,000,000,000,000 micro-STX)
+(define-constant max-amount u1000000000000)
+
 ;; Data Variables
 (define-data-var remittance-nonce uint u0)
 (define-data-var contract-paused bool false)
@@ -83,7 +87,7 @@
     ;; Validations
     (asserts! (not (var-get contract-paused)) err-contract-paused)
     (try! (validate-principal recipient false))
-    (asserts! (> target-amount u0) err-invalid-amount)
+    (try! (validate-amount target-amount u1 max-amount))
     (asserts! (> deadline current-time) err-invalid-deadline)
 
     ;; Store remittance data
@@ -131,7 +135,7 @@
 
     ;; Validations
     (asserts! (not (var-get contract-paused)) err-contract-paused)
-    (asserts! (> amount u0) err-invalid-amount)
+    (try! (validate-amount amount u1 max-amount))
     (asserts! (is-eq (get status remittance) "active") err-invalid-status)
     (asserts! (> (get deadline remittance) current-time) err-deadline-passed)
 
@@ -277,7 +281,7 @@
 (define-public (update-platform-fee (new-fee-bps uint))
   (begin
     (asserts! (is-eq tx-sender contract-owner) err-owner-only)
-    (asserts! (<= new-fee-bps max-platform-fee-bps) err-invalid-amount)
+    (try! (validate-amount new-fee-bps u0 max-platform-fee-bps))
     (var-set platform-fee-bps new-fee-bps)
     (ok true)
   )
@@ -291,7 +295,7 @@
 (define-public (emergency-withdraw (amount uint) (recipient principal))
   (begin
     (asserts! (is-eq tx-sender contract-owner) err-owner-only)
-    (asserts! (> amount u0) err-invalid-amount)
+    (try! (validate-amount amount u1 max-amount))
     (try! (as-contract (stx-transfer? amount tx-sender recipient)))
     (ok true)
   )
@@ -307,6 +311,19 @@
   (begin
     ;; Check if principal is tx-sender when not allowed
     (asserts! (or allow-self (not (is-eq principal-to-check tx-sender))) err-invalid-recipient)
+    (ok true)
+  )
+)
+
+;; Helper function to validate amount values
+;; @param amount: The amount to validate
+;; @param min-amount: Minimum acceptable amount
+;; @param max-amount: Maximum acceptable amount
+;; @returns: (ok true) if valid, error otherwise
+(define-private (validate-amount (amount uint) (min-amount uint) (max-amount uint))
+  (begin
+    (asserts! (>= amount min-amount) err-invalid-amount)
+    (asserts! (<= amount max-amount) err-invalid-amount)
     (ok true)
   )
 )
