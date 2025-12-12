@@ -26,6 +26,10 @@
 ;; Max amount: 1 million STX (1,000,000,000,000 micro-STX)
 (define-constant max-amount u1000000000000)
 
+;; Deadline limits
+;; Max deadline offset: 1 year in seconds (365 days * 24 hours * 60 min * 60 sec)
+(define-constant max-deadline-offset u31536000)
+
 ;; Data Variables
 (define-data-var remittance-nonce uint u0)
 (define-data-var contract-paused bool false)
@@ -88,7 +92,7 @@
     (asserts! (not (var-get contract-paused)) err-contract-paused)
     (try! (validate-principal recipient false))
     (try! (validate-amount target-amount u1 max-amount))
-    (asserts! (> deadline current-time) err-invalid-deadline)
+    (try! (validate-deadline deadline current-time))
 
     ;; Store remittance data
     (map-set remittances
@@ -324,6 +328,21 @@
   (begin
     (asserts! (>= amount min-amount) err-invalid-amount)
     (asserts! (<= amount max-amount) err-invalid-amount)
+    (ok true)
+  )
+)
+
+;; Helper function to validate deadline timestamps
+;; @param deadline: The deadline timestamp to validate
+;; @param current-time: Current block time from stacks-block-time
+;; @returns: (ok true) if valid, error otherwise
+(define-private (validate-deadline (deadline uint) (current-time uint))
+  (let
+    (
+      (max-deadline (+ current-time max-deadline-offset))
+    )
+    (asserts! (> deadline current-time) err-invalid-deadline)
+    (asserts! (<= deadline max-deadline) err-invalid-deadline)
     (ok true)
   )
 )
