@@ -51,6 +51,12 @@
   }
 )
 
+;; Track list of contributors per remittance (for refunds)
+(define-map remittance-contributors
+  { remittance-id: uint }
+  { contributors: (list 100 principal) }
+)
+
 ;; Public Functions
 
 ;; Create a new remittance request
@@ -130,6 +136,23 @@
     ;; Transfer STX from contributor to contract
     (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
 
+    ;; Add contributor to list if first-time contributor
+    (if (is-eq (get amount existing-contribution) u0)
+      (let
+        (
+          (current-contributors (default-to
+            { contributors: (list) }
+            (map-get? remittance-contributors { remittance-id: remittance-id })
+          ))
+        )
+        (map-set remittance-contributors
+          { remittance-id: remittance-id }
+          { contributors: (unwrap-panic (as-max-len? (append (get contributors current-contributors) tx-sender) u100)) }
+        )
+      )
+      true
+    )
+
     ;; Update or create contribution record
     (map-set contributions
       { remittance-id: remittance-id, contributor: tx-sender }
@@ -185,6 +208,67 @@
     )
 
     (ok true)
+  )
+)
+
+;; Cancel remittance and refund all contributors
+;; @param remittance-id: The ID of the remittance to cancel
+;; @returns: Success boolean or error code
+(define-public (cancel-remittance (remittance-id uint))
+  (let
+    (
+      (remittance (unwrap! (map-get? remittances { remittance-id: remittance-id }) err-not-found))
+      (contributors-data (default-to
+        { contributors: (list) }
+        (map-get? remittance-contributors { remittance-id: remittance-id })
+      ))
+      (contributors-list (get contributors contributors-data))
+    )
+
+    ;; Validations
+    (asserts! (is-eq tx-sender (get creator remittance)) err-unauthorized)
+    (asserts! (or
+      (is-eq (get status remittance) "active")
+      (is-eq (get status remittance) "funded")
+    ) err-invalid-status)
+
+    ;; Refund all contributors
+    (fold refund-contributor contributors-list { remittance-id: remittance-id, success: true })
+
+    ;; Update remittance status to cancelled
+    (map-set remittances
+      { remittance-id: remittance-id }
+      (merge remittance { status: "cancelled" })
+    )
+
+    (ok true)
+  )
+)
+
+;; Private Functions
+
+;; Helper function to refund a single contributor
+;; @param contributor: The principal to refund
+;; @param context: Context containing remittance-id and success flag
+;; @returns: Updated context
+(define-private (refund-contributor
+    (contributor principal)
+    (context { remittance-id: uint, success: bool }))
+  (let
+    (
+      (remittance-id (get remittance-id context))
+      (contribution (unwrap-panic (map-get? contributions { remittance-id: remittance-id, contributor: contributor })))
+      (refund-amount (get amount contribution))
+    )
+
+    ;; Transfer refund from contract to contributor
+    (if (> refund-amount u0)
+      (begin
+        (unwrap-panic (as-contract (stx-transfer? refund-amount tx-sender contributor)))
+        context
+      )
+      context
+    )
   )
 )
 
